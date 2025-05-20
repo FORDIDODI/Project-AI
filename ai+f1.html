@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kematangan Sawit</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background: #f9f9f9;
+        }
+        #preview, #camera-stream {
+            max-width: 300px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+        }
+        .custom-button {
+            display: inline-block;
+            padding: 12px 25px;
+            margin: 10px;
+            background-color: #4caf50;
+            color: white;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+        .custom-button:hover { background-color: #388e3c; }
+        input[type="file"] { display: none; }
+        #loading { display: none; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Kematangan Sawit</h2>
+
+    <input type="file" id="upload" accept="image/*">
+    <label for="upload" class="custom-button">Pilih File</label>
+
+    <button id="start-camera" class="custom-button">Gunakan Kamera</button>
+    <button id="stop-camera" class="custom-button" hidden>Batalkan Kamera</button>
+    <video id="camera-stream" autoplay playsinline hidden></video>
+    <canvas id="canvas" hidden></canvas>
+
+    <br>
+    <img id="preview" alt="Preview Image">
+    <br>
+    <button onclick="predict()" class="custom-button">Prediksi</button>
+    <p id="loading">Memproses...</p>
+    <p id="result"></p>
+
+    <script>
+        let model;
+        let stream; 
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            try {
+                model = await tf.loadLayersModel('./tfjs_model/model.json');  // FIXED: Ensure correct format
+                console.log("✅ Model berhasil dimuat!");
+            } catch (err) {
+                console.error("❌ Error loading model:", err);
+                alert("Error loading model.");
+            }
+        });
+
+        async function predict() {
+            const previewImage = document.getElementById('preview');
+            let imageTensor;
+
+            if (previewImage.src) {
+                const img = new Image();
+                img.src = previewImage.src;
+                imageTensor = tf.browser.fromPixels(img)
+                    .resizeNearestNeighbor([100, 100])
+                    .toFloat()
+                    .div(tf.scalar(255.0))
+                    .expandDims();
+            } else {
+                alert("Upload gambar terlebih dahulu.");
+                return;
+            }
+
+            try {
+                const predictions = await model.predict(imageTensor).data();
+                const classes = ["Belum Masak", "Matang Optimal", "Terlalu Matang"];
+                const maxIndex = predictions.indexOf(Math.max(...predictions));
+                document.getElementById("result").innerText = `Hasil: ${classes[maxIndex]}`;
+            } catch (err) {
+                console.error("❌ Prediction error:", err);
+                alert("Prediksi gagal.");
+            }
+        }
+    </script>
+
+</body>
+</html>

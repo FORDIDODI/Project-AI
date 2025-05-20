@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Klasifikasi Sawit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+</head>
+<body class="bg-white dark:bg-gray-900 min-h-screen flex flex-col items-center py-10 px-4 text-gray-800 dark:text-gray-100 transition-colors duration-500 font-sans">
+
+  <h1 class="text-3xl font-bold mb-6 text-center animate-pulse">🍃 Klasifikasi Buah Sawit</h1>
+
+  <div class="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 w-full max-w-xl transition-all duration-300">
+    <div class="flex flex-col items-center space-y-4 mb-4">
+      <div class="space-x-2">
+        <button onclick="startWebcam()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Start Webcam</button>
+        <button onclick="stopWebcam()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Stop Webcam</button>
+      </div>
+
+      <input type="file" accept="image/*" onchange="handleImageUpload(event)"
+        class="text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-gray-700 file:text-blue-700 dark:file:text-white hover:file:bg-blue-100 dark:hover:file:bg-gray-600"/>
+
+      <button onclick="checkMaturity()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Check Kematangan</button>
+    </div>
+
+    <div id="webcam-container" class="flex justify-center mb-4"></div>
+    <div id="image-preview" class="mb-4"></div>
+    <div id="label-container" class="space-y-2 transition-all duration-500"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    const URL = "./";
+    let model, webcam, labelContainer, maxPredictions;
+    let currentSource = null;
+    let isLooping = false;
+
+    window.addEventListener("load", async () => {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      labelContainer = document.getElementById("label-container");
+      labelContainer.innerHTML = "";
+      for (let i = 0; i < maxPredictions; i++) {
+        const barContainer = document.createElement("div");
+        barContainer.className = "flex items-center space-x-2";
+
+        const label = document.createElement("span");
+        label.className = "w-28 text-sm font-semibold";
+
+        const bar = document.createElement("div");
+        bar.className = "h-4 rounded bg-green-500 transition-all duration-500";
+        bar.style.width = "0%";
+
+        barContainer.appendChild(label);
+        barContainer.appendChild(bar);
+        labelContainer.appendChild(barContainer);
+      }
+    });
+
+    async function startWebcam() {
+      stopWebcam();
+      webcam = new tmImage.Webcam(200, 200, true);
+      await webcam.setup();
+      await webcam.play();
+      currentSource = webcam.canvas;
+
+      document.getElementById("webcam-container").innerHTML = "";
+      document.getElementById("image-preview").innerHTML = "";
+      document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+      isLooping = true;
+      loop();
+    }
+
+    function stopWebcam() {
+      if (webcam && webcam.stop) {
+        isLooping = false;
+        webcam.stop();
+        document.getElementById("webcam-container").innerHTML = "";
+        webcam = null;
+      }
+      currentSource = null; // Reset sumber gambar
+    }
+
+    function handleImageUpload(event) {
+      stopWebcam();
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = document.createElement("img");
+        img.src = e.target.result;
+        img.className = "max-w-full h-auto mx-auto rounded-md";
+        img.onload = async () => {
+          currentSource = img;
+          document.getElementById("image-preview").innerHTML = "";
+          document.getElementById("image-preview").appendChild(img);
+
+          // Auto prediksi begitu gambar selesai di-load
+          const prediction = await model.predict(currentSource);
+          updateBarChart(prediction);
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function loop() {
+      if (!isLooping) return;
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      if (!model || !currentSource) return;
+      const prediction = await model.predict(currentSource);
+      updateBarChart(prediction);
+    }
+
+    async function checkMaturity() {
+      if (!currentSource) {
+        alert("Silakan pilih gambar atau aktifkan webcam dulu.");
+        return;
+      }
+
+      if (webcam && webcam.playing) {
+        isLooping = false;
+        webcam.pause();
+      }
+
+      const prediction = await model.predict(currentSource);
+      updateBarChart(prediction);
+    }
+
+    function updateBarChart(prediction) {
+      for (let i = 0; i < maxPredictions; i++) {
+        const container = labelContainer.childNodes[i];
+        const labelSpan = container.childNodes[0];
+        const barDiv = container.childNodes[1];
+        const prob = prediction[i].probability;
+
+        labelSpan.innerText = prediction[i].className + ": " + (prob * 100).toFixed(1) + "%";
+        barDiv.style.width = (prob * 100) + "%";
+
+        if (prediction[i].className.toLowerCase().includes("belum")) {
+          barDiv.className = "h-4 rounded bg-yellow-500 transition-all duration-500";
+        } else if (prediction[i].className.toLowerCase().includes("matang")) {
+          barDiv.className = "h-4 rounded bg-green-600 transition-all duration-500";
+        } else if (prediction[i].className.toLowerCase().includes("terlalu")) {
+          barDiv.className = "h-4 rounded bg-red-500 transition-all duration-500";
+        } else {
+          barDiv.className = "h-4 rounded bg-gray-500 transition-all duration-500";
+        }
+      }
+    }
+  </script>
+</body>
+</html>

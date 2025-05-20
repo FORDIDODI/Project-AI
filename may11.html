@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediksi Sawit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4 transition-colors duration-500 font-sans">
+
+    <h1 class="text-3xl font-bold mb-6 text-center animate-pulse">🍃 Prediksi Kelas Sawit</h1>
+
+    <div class="bg-gray-800 shadow-xl rounded-xl p-6 w-full max-w-xl transition-all duration-300">
+        <div class="flex flex-col items-center space-y-4 mb-4">
+            <div class="space-x-2">
+                <button onclick="startWebcam()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Start Webcam</button>
+                <button onclick="stopWebcam()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Stop Webcam</button>
+            </div>
+
+            <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)"
+                class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition"/>
+
+            <button onclick="checkMaturity()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Check Kematangan</button>
+        </div>
+
+        <div id="webcam-container" class="flex justify-center mb-4"></div>
+        <div id="image-preview" class="mb-4"></div>
+        <div id="label-container" class="space-y-2 transition-all duration-500"></div>
+    </div>
+
+    <script>
+        let model, webcamStream, labelContainer, currentSource = null;
+
+        async function loadModel() {
+            try {
+                model = await tf.loadGraphModel('model_sawit_tfjs/model.json');
+                console.log('Model berhasil dimuat!');
+                initializeLabels();
+            } catch (error) {
+                console.error('Gagal memuat model:', error);
+            }
+        }
+
+        function initializeLabels() {
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = "";
+            const classes = ['Kelas A', 'Kelas B', 'Kelas C']; 
+
+            for (let i = 0; i < classes.length; i++) {
+                const barContainer = document.createElement("div");
+                barContainer.className = "flex items-center space-x-2";
+
+                const label = document.createElement("span");
+                label.className = "w-28 text-sm font-semibold";
+
+                const bar = document.createElement("div");
+                bar.className = "h-4 rounded transition-all duration-500";
+                bar.style.width = "0%";
+
+                barContainer.appendChild(label);
+                barContainer.appendChild(bar);
+                labelContainer.appendChild(barContainer);
+            }
+        }
+
+        loadModel();
+
+        function handleImageUpload(event) {
+            stopWebcam();
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.className = "max-w-full h-auto mx-auto rounded-md";
+                img.onload = async () => {
+                    currentSource = img;
+                    document.getElementById("image-preview").innerHTML = "";
+                    document.getElementById("image-preview").appendChild(img);
+
+                    const prediction = await predict();
+                    updateBarChart(prediction);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function startWebcam() {
+            stopWebcam();
+            try {
+                const constraints = {
+                    video: {
+                        width: 224,
+                        height: 224,
+                        facingMode: "user"
+                    }
+                };
+                webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const videoElement = document.createElement("video");
+                videoElement.srcObject = webcamStream;
+                videoElement.autoplay = true;
+                videoElement.className = "rounded-md border";
+
+                document.getElementById("webcam-container").innerHTML = "";
+                document.getElementById("image-preview").innerHTML = "";
+                document.getElementById("webcam-container").appendChild(videoElement);
+
+                currentSource = videoElement;
+                console.log("Webcam berhasil dinyalakan!");
+            } catch (error) {
+                console.error("Gagal memulai webcam:", error);
+            }
+        }
+
+        function stopWebcam() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                document.getElementById("webcam-container").innerHTML = "";
+                webcamStream = null;
+            }
+            currentSource = null;
+        }
+
+        async function predict() {
+            if (!model || !currentSource) return [];
+            const tensor = tf.browser.fromPixels(currentSource)
+                .resizeNearestNeighbor([224, 224])
+                .expandDims()
+                .toFloat()
+                .div(tf.scalar(255));
+
+            const prediction = await model.predict(tensor).data();
+            return prediction;
+        }
+
+        async function checkMaturity() {
+            if (!currentSource) {
+                alert("Silakan pilih gambar atau aktifkan webcam dulu.");
+                return;
+            }
+
+            const prediction = await predict();
+            updateBarChart(prediction);
+        }
+
+        function updateBarChart(prediction) {
+            const classes = ['Belum Matang', 'Matang Optimal', 'Terlalu Matang'];
+            for (let i = 0; i < classes.length; i++) {
+                const container = labelContainer.childNodes[i];
+                const labelSpan = container.childNodes[0];
+                const barDiv = container.childNodes[1];
+                const prob = prediction[i] * 100;
+
+                labelSpan.innerText = `${classes[i]}: ${prob.toFixed(1)}%`;
+                barDiv.style.width = `${prob}%`;
+
+                // GRADASI WARNA BERDASARKAN NILAI
+                if (prob >= 80) {
+                    barDiv.className = "h-4 rounded bg-green-600 transition-all duration-500";
+                } else if (prob >= 50) {
+                    barDiv.className = "h-4 rounded bg-yellow-500 transition-all duration-500";
+                } else {
+                    barDiv.className = "h-4 rounded bg-red-500 transition-all duration-500";
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>
