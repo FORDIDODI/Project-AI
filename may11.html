@@ -27,6 +27,10 @@
         </div>
         <div class="flex flex-col items-center space-y-4 mb-4">
             <div class="space-x-2">
+                <select id="camera-select" class="bg-gray-700 text-white px-3 py-2 rounded mb-2">
+                    <option value="user">Kamera Depan</option>
+                    <option value="environment">Kamera Belakang</option>
+                </select>
                 <button onclick="startWebcam()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Start Webcam</button>
                 <button onclick="stopWebcam()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Stop Webcam</button>
             </div>
@@ -114,11 +118,14 @@
         async function startWebcam() {
             stopWebcam();
             try {
+
+                const selectedFacingMode = document.getElementById("camera-select").value;
+
                 const constraints = {
                     video: {
                         width: 224,
                         height: 224,
-                        facingMode: "user"
+                        facingMode: { exact: selectedFacingMode }
                     }
                 };
                 webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -135,6 +142,7 @@
                 console.log("Webcam berhasil dinyalakan!");
             } catch (error) {
                 console.error("Gagal memulai webcam:", error);
+                alert("Tidak dapat mengakses kamera. coba periksa izin kamera atau ganti mode kamera. ")
             }
             document.getElementById("placeholder").style.display = "none"
         }
