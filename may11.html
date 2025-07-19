@@ -13,10 +13,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4 transition-colors duration-500 font-sans">
+<button onclick="toggleTheme()" class="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-gray-700 transition" title="Ganti Tema">
+    🌗
+</button>
 
-    <button onclick="document.documentElement.classList.toggle('dark')" class="absolute top-4 right-4 bg-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-600 transition">
-        toggle Theme
-    </button>
 
     <h1 class="text-3xl font-bold mb-6 text-center animate-pulse">🍃 Prediksi Kelas Sawit</h1>
 
@@ -26,21 +26,25 @@
             <p class="mt-20 text-sm">Unggah gambar atau nyalakan webcam untuk memulai prediksi</p>
         </div>
         <div class="flex flex-col items-center space-y-4 mb-4">
-            <div class="space-x-2">
-                <select id="camera-select" class="bg-gray-700 text-white px-3 py-2 rounded mb-2">
+                            <select id="camera-select" class="bg-gray-700 text-white px-3 py-2 rounded mb-2">
                     <option value="user">Kamera Depan</option>
                     <option value="environment">Kamera Belakang</option>
                 </select>
+            <div class="space-x-2">
                 <button onclick="startWebcam()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Start Webcam</button>
                 <button onclick="stopWebcam()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Stop Webcam</button>
             </div>
 
             <input type="file" id="file-input" accept="image/*" onchange="handleImageUpload(event)"
                 class="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition"/>
-        <div id="loading-indicator" class="text-sm text-gray-400 hidden text-center mt-4 animate-pulse">
+        
+        <div>
+            <button onclick="resetAll()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition">Reset</button>
+        </div>
+        
+                <div id="loading-indicator" class="text-sm text-gray-400 hidden text-center mt-4 animate-pulse">
              Memproses gambar...
         </div>
-
             <button onclick="checkMaturity()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Check Kematangan</button>
         </div>
 
@@ -113,6 +117,22 @@
             };
             reader.readAsDataURL(file);
             document.getElementById("placeholder").style.display = "none"
+        }
+
+        function toggleTheme () {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+        }
+
+        function resetAll() {
+            stopWebcam();
+            currentSource = null;
+            document.getElementById("image-preview").innerHTML = "";
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("label-container").innerHTML = "";
+            document.getElementById("placeholder").style.display = "block";
+            document.getElementById("file-input").value = ""; //untuk reset file input
+            initializeLabels(); //inisialisasi ulang label chart
         }
 
         async function startWebcam() {
