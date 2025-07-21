@@ -1,3 +1,11 @@
+<script>
+import { createIcons, icons } from 'lucide';
+
+createIcons({ icons });
+
+document.body.append('<i data-lucide="sun"></i>');  
+</script>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -12,15 +20,37 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center py-10 px-4 transition-colors duration-500 font-sans">
-<button onclick="toggleTheme()" class="absolute top-4 right-4 text-white p-2 rounded-full hover:bg-gray-700 transition" title="Ganti Tema">
-    🌗
+<body class="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col items-center py-10 px-4 transition-colors duration-500 font-sans">
+<button onclick="toggleTheme()" class="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition" title="Ganti Tema">
+    <!-- Icon Matahari (hanya muncul saat light mode) -->
+    <svg xmlns="http://www.w3.org/2000/svg"
+        class="lucide lucide-sun w-6 h-6 dark:hidden"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+
+    <!-- Icon Bulan (hanya muncul saat dark mode) -->
+    <svg xmlns="http://www.w3.org/2000/svg"
+        class="lucide lucide-moon w-6 h-6 hidden dark:inline"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
 </button>
 
 
     <h1 class="text-3xl font-bold mb-6 text-center animate-pulse">🍃 Prediksi Kelas Sawit</h1>
 
-    <div class="bg-gray-800 shadow-xl rounded-xl p-6 w-full max-w-xl transition-all duration-300">
+    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-6 w-full max-w-xl transition-all duration-300 text-gray-900 dark:text-white">
         <div id="placeholder" class="text-center text-gray-400 mb-4">
             <img src="https://cdn-icons-png.flaticon.com/512/5543/5543131.png" alt="Upload atau Webcam" class="w-40 mx-auto opacity-50">
             <p class="mt-20 text-sm">Unggah gambar atau nyalakan webcam untuk memulai prediksi</p>
@@ -119,10 +149,10 @@
             document.getElementById("placeholder").style.display = "none"
         }
 
-        function toggleTheme () {
-            const html = document.documentElement;
-            html.classList.toggle('dark');
-        }
+function toggleTheme() {
+    document.documentElement.classList.toggle('dark');
+}
+
 
         function resetAll() {
             stopWebcam();
